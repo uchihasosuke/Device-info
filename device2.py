@@ -49,9 +49,9 @@ def get_device_info():
         "OS Release": platform.release(),
         "Total RAM": f"{round(psutil.virtual_memory().total / (1024**3), 2)} GB",
         "Available RAM": f"{round(psutil.virtual_memory().available / (1024**3), 2)} GB",
-        "Disk Total": f"{round(psutil.disk_usage('/').total / (1024**3), 2)} GB",
-        "Disk Used": f"{round(psutil.disk_usage('/').used / (1024**3), 2)} GB",
-        "Disk Free": f"{round(psutil.disk_usage('/').free / (1024**3), 2)} GB",
+        # "Disk Total": f"{round(psutil.disk_usage('/').total / (1024**3), 2)} GB",
+        # "Disk Used": f"{round(psutil.disk_usage('/').used / (1024**3), 2)} GB",
+        # "Disk Free": f"{round(psutil.disk_usage('/').free / (1024**3), 2)} GB",
         "System Uptime": str(datetime.now() - boot_time),
         "Network Interfaces": "\n"+"\n".join(
     f"{interface}:\n  " + "\n  ".join(addr.address for addr in addrs)
